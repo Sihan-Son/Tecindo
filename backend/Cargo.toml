@@ -1,0 +1,117 @@
+# ============================================================================
+# Cargo.toml — Rust 프로젝트 설정 파일
+# ============================================================================
+# Cargo는 Rust의 패키지 관리자 겸 빌드 시스템입니다.
+# Node.js의 package.json, Python의 pyproject.toml에 해당합니다.
+#
+# 주요 섹션:
+# - [package]: 프로젝트 기본 정보
+# - [dependencies]: 외부 라이브러리(크레이트) 의존성 목록
+#
+# 크레이트(crate): Rust 생태계에서 라이브러리/패키지를 부르는 이름
+# crates.io: Rust의 공식 패키지 레지스트리 (npm, PyPI에 해당)
+# ============================================================================
+
+[package]
+name = "tecindo"          # 프로젝트(크레이트) 이름
+version = "0.1.0"         # 시맨틱 버전 (major.minor.patch)
+edition = "2021"          # Rust 에디션. 언어 기능 세트를 결정합니다.
+                          # 2021은 현재 널리 사용되는 안정 에디션입니다.
+
+# ── 의존성(Dependencies) ──
+# 각 라이브러리의 역할과 features 설명
+[dependencies]
+
+# axum: Tokio 기반 비동기 웹 프레임워크
+# Express.js(Node.js)나 FastAPI(Python)와 같은 역할
+# features:
+#   - "macros": #[debug_handler] 등 디버깅용 매크로 활성화
+axum = { version = "0.8", features = ["macros"] }
+
+# tokio: Rust의 비동기 런타임 (이벤트 루프)
+# Node.js의 libuv, Python의 asyncio에 해당
+# async/await 코드를 실제로 실행하는 엔진입니다.
+# features:
+#   - "full": 모든 기능 활성화 (파일I/O, 네트워크, 타이머, 멀티스레드 등)
+tokio = { version = "1", features = ["full"] }
+
+# sqlx: 컴파일 타임 검증 가능한 비동기 SQL 라이브러리
+# ORM이 아닌 순수 SQL을 사용하면서도 타입 안전성을 제공합니다.
+# features:
+#   - "runtime-tokio": Tokio 런타임에서 실행
+#   - "sqlite": SQLite 데이터베이스 지원
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+
+# serde: Rust 생태계의 표준 직렬화/역직렬화 프레임워크
+# 구조체 ↔ JSON/YAML/TOML 등 데이터 포맷 간 변환을 담당합니다.
+# features:
+#   - "derive": #[derive(Serialize, Deserialize)] 매크로 활성화
+serde = { version = "1", features = ["derive"] }
+
+# serde_json: serde의 JSON 구현
+# JSON 파싱, 생성, json! 매크로 등을 제공합니다.
+serde_json = "1"
+
+# uuid: UUID(Universally Unique Identifier) 생성 라이브러리
+# features:
+#   - "v7": UUIDv7 지원 (시간 기반, 정렬 가능한 UUID)
+#            v4(랜덤)와 달리 생성 순서대로 정렬이 가능합니다.
+uuid = { version = "1", features = ["v7"] }
+
+# tower-http: HTTP 미들웨어 컬렉션
+# Axum과 함께 사용하는 요청/응답 처리 미들웨어들입니다.
+# features:
+#   - "cors": CORS(Cross-Origin Resource Sharing) 처리
+#   - "trace": HTTP 요청/응답 자동 로깅
+#   - "fs": 정적 파일 서빙 (ServeDir, ServeFile)
+tower-http = { version = "0.6", features = ["cors", "trace", "fs"] }
+
+# tracing: Rust 생태계의 구조화된 로깅 프레임워크
+# println! 대신 사용하며, 로그 레벨/필터링/구조화된 메타데이터를 지원합니다.
+tracing = "0.1"
+
+# tracing-subscriber: tracing의 로그 출력 구현체
+# 터미널 출력 포맷, 환경변수 기반 필터링 등을 제공합니다.
+# features:
+#   - "env-filter": RUST_LOG 환경변수로 로그 레벨 제어
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# anyhow: 간편한 에러 처리 라이브러리
+# anyhow::Result<T>로 어떤 에러 타입이든 하나의 타입으로 다룰 수 있습니다.
+# main 함수나 프로토타이핑에 적합합니다.
+# (라이브러리에는 thiserror를 사용)
+anyhow = "1"
+
+# thiserror: 커스텀 에러 타입을 쉽게 만들어주는 매크로 라이브러리
+# #[derive(Error)]로 Display, std::error::Error 트레이트를 자동 구현합니다.
+# 라이브러리/모듈 수준의 정밀한 에러 처리에 적합합니다.
+thiserror = "2"
+
+# dotenvy: .env 파일에서 환경변수를 로딩하는 라이브러리
+# 개발 시 .env 파일로 설정을 관리할 수 있게 해줍니다.
+# (dotenv 크레이트의 유지보수 포크)
+dotenvy = "0.15"
+
+# chrono: 날짜/시간 처리 라이브러리
+# Python의 datetime, JavaScript의 Date보다 강력한 타입 안전성을 제공합니다.
+# features:
+#   - "serde": chrono 타입의 JSON 직렬화/역직렬화 지원
+chrono = { version = "0.4", features = ["serde"] }
+
+# slug: 텍스트를 URL 친화적인 형태(slug)로 변환하는 라이브러리
+# 예: "Hello World!" → "hello-world", "나의 글" → "나의-글"
+slug = "0.1"
+
+# jsonwebtoken: JWT(JSON Web Token) 생성 및 검증 라이브러리
+# 인증 토큰의 서명, 검증, 클레임 추출 등을 처리합니다.
+jsonwebtoken = "9"
+
+# argon2: Argon2id 비밀번호 해싱 라이브러리
+# 비밀번호를 안전하게 해싱하여 저장합니다.
+# Argon2id는 현재 가장 안전한 비밀번호 해싱 알고리즘으로 권장됩니다.
+argon2 = "0.5"
+
+# sha2: SHA-2 해시 함수 모음 (SHA-256, SHA-512 등)
+# refresh 토큰 해싱 등에 사용됩니다.
+# (비밀번호 해싱에는 SHA-2가 아닌 argon2를 사용해야 합니다)
+sha2 = "0.10"

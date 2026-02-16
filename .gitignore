@@ -1,0 +1,24 @@
+# Runtime data
+data/
+
+# Rust backend
+backend/target/
+
+# Node.js frontend
+frontend/node_modules/
+frontend/dist/
+
+# Environment variables
+.env
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-wal
+
+# macOS
+.DS_Store
+
+# Vim
+*.swp
+*.swo

@@ -1,0 +1,32 @@
+# Development configuration (localhost)
+:80 {
+	# Reverse proxy to Tecindo backend
+	reverse_proxy tecindo:3000
+
+	# Compress responses
+	encode gzip
+
+	# Security headers
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+# Production configuration (uncomment and customize for deployment)
+# Replace 'your-domain.com' with your actual domain
+#
+# your-domain.com {
+# 	# Automatic HTTPS with Let's Encrypt
+# 	reverse_proxy tecindo:3000
+#
+# 	encode gzip
+#
+# 	header {
+# 		X-Frame-Options "SAMEORIGIN"
+# 		X-Content-Type-Options "nosniff"
+# 		Referrer-Policy "strict-origin-when-cross-origin"
+# 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+# 	}
+# }
