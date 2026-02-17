@@ -98,7 +98,13 @@ export default function Editor() {
     }
   };
 
-  const wordCount = editor?.getText().split(/\s+/).filter(Boolean).length || 0;
+  const text = editor?.getText() || '';
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  const chars = [...text.replace(/\s/g, '')];
+  const totalChars = chars.length;
+  const koreanChars = chars.filter(c => /[\u3131-\u318E\uAC00-\uD7A3]/.test(c)).length;
+  const englishChars = chars.filter(c => /[a-zA-Z]/.test(c)).length;
+  const otherChars = totalChars - koreanChars - englishChars;
 
   const handleExportMarkdown = () => {
     if (!editor || !currentDocument) return;
@@ -156,7 +162,10 @@ export default function Editor() {
       )}
       <EditorContent editor={editor} />
       <div className="editor-footer">
-        <span className="word-count">{wordCount} words</span>
+        <div className="char-stats">
+          <span className="char-stat-total">{totalChars}자</span>
+          <span className="char-stat-detail">한 {koreanChars} · 영 {englishChars}{otherChars > 0 ? ` · 기타 ${otherChars}` : ''} · {wordCount}단어</span>
+        </div>
         <button className="btn-export" onClick={handleExportMarkdown} title="Export as Markdown">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M8 2V10M8 10L5 7M8 10L11 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

@@ -18,6 +18,7 @@ export default function Sidebar() {
     createDocument,
     loadDocument,
     updateDocument,
+    deleteDocument,
     loadFolders,
     createFolder,
     updateFolder,
@@ -90,6 +91,12 @@ export default function Sidebar() {
 
   const handleMoveDocument = async (docId: string, folderId: string | null) => {
     await updateDocument(docId, { folder_id: folderId });
+    closeMenu();
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm('이 문서를 삭제하시겠습니까?')) return;
+    await deleteDocument(docId);
     closeMenu();
   };
 
@@ -350,36 +357,48 @@ export default function Sidebar() {
                   )}
                 </div>
               </button>
-              {folders.length > 0 && (
-                <div className="document-more-wrapper">
-                  <button
-                    className="document-more-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuDocId(menuDocId === doc.id ? null : doc.id);
-                    }}
-                    title="More actions"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <circle cx="7" cy="3" r="1.2" fill="currentColor" />
-                      <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-                      <circle cx="7" cy="11" r="1.2" fill="currentColor" />
-                    </svg>
-                  </button>
-                  {menuDocId === doc.id && (
-                    <div ref={menuRef} className="document-dropdown">
-                      <div className="document-dropdown-label">Move to</div>
-                      <button
-                        className="document-dropdown-item"
-                        onClick={() => handleMoveDocument(doc.id, null)}
-                      >
-                        Root (No folder)
-                      </button>
-                      {renderMoveTree(doc.id, null, 0)}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="document-more-wrapper">
+                <button
+                  className="document-more-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuDocId(menuDocId === doc.id ? null : doc.id);
+                  }}
+                  title="More actions"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="3" r="1.2" fill="currentColor" />
+                    <circle cx="7" cy="7" r="1.2" fill="currentColor" />
+                    <circle cx="7" cy="11" r="1.2" fill="currentColor" />
+                  </svg>
+                </button>
+                {menuDocId === doc.id && (
+                  <div ref={menuRef} className="document-dropdown">
+                    {folders.length > 0 && (
+                      <>
+                        <div className="document-dropdown-label">Move to</div>
+                        <button
+                          className="document-dropdown-item"
+                          onClick={() => handleMoveDocument(doc.id, null)}
+                        >
+                          Root (No folder)
+                        </button>
+                        {renderMoveTree(doc.id, null, 0)}
+                        <div className="document-dropdown-divider" />
+                      </>
+                    )}
+                    <button
+                      className="document-dropdown-item document-dropdown-delete"
+                      onClick={() => handleDeleteDocument(doc.id)}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 3H10M4.5 3V2.5C4.5 2.22386 4.72386 2 5 2H7C7.27614 2 7.5 2.22386 7.5 2.5V3M5 5.5V8.5M7 5.5V8.5M3 3L3.5 9.5C3.5 9.77614 3.72386 10 4 10H8C8.27614 10 8.5 9.77614 8.5 9.5L9 3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ))
         )}
