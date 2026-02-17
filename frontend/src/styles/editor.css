@@ -429,6 +429,121 @@ body {
   background: var(--color-hover);
 }
 
+/* Tag Filter Section */
+.sidebar-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tag-filter-item {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 9999px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.tag-filter-item:hover {
+  opacity: 1;
+}
+
+.tag-filter-item.active {
+  opacity: 1;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Document Tags in Sidebar */
+.document-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
+/* Editor Tags */
+.editor-tags {
+  padding: 8px 40px 0;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Tag Selector (hashtag-style inline input) */
+.tag-selector {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.tag-selector-hash {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 24px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.tag-selector-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  flex: 1;
+  min-height: 24px;
+}
+
+.tag-selector-input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  padding: 2px 0;
+  background: transparent;
+  color: var(--color-text);
+  min-width: 80px;
+  flex: 1;
+  line-height: 20px;
+}
+
+.tag-selector-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.tag-selector-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  min-width: 150px;
+  padding: 4px;
+}
+
+.tag-selector-suggestion {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.tag-selector-suggestion:hover {
+  background: var(--color-hover);
+}
+
 /* Editor */
 .editor-container {
   flex: 1;
@@ -443,6 +558,67 @@ body {
   align-items: center;
   justify-content: center;
   height: 100%;
+  color: var(--color-text-muted);
+}
+
+.onboarding {
+  max-width: 400px;
+  text-align: center;
+}
+
+.onboarding-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 4px;
+  letter-spacing: -0.5px;
+}
+
+.onboarding-subtitle {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin: 0 0 32px;
+}
+
+.onboarding-shortcuts {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.shortcut-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--color-hover);
+  color: var(--color-text-muted);
+  font-size: 16px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.shortcut-item strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.shortcut-item p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--color-text-muted);
 }
 
@@ -617,6 +793,35 @@ body {
   background: #fef2f2 !important;
 }
 
+.save-status {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.export-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-save {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-save:hover {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
 .btn-export {
   display: flex;
   align-items: center;
@@ -631,9 +836,14 @@ body {
   transition: background 0.15s, color 0.15s;
 }
 
-.btn-export:hover {
+.btn-export:hover:not(:disabled) {
   background: var(--color-hover);
   color: var(--color-text);
+}
+
+.btn-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Responsive */
