@@ -20,7 +20,8 @@
 use crate::{
     db,
     error::AppError,
-    models::*,                   // WritingSession, CreateSessionRequest, EndSessionRequest
+    middleware::auth::AuthUser,
+    models::*,
     routes::documents::AppState,
 };
 use axum::{
@@ -37,11 +38,10 @@ use serde_json::{json, Value};
 /// 문서의 작성 이력을 시간순으로 추적하는 데 사용합니다.
 pub async fn list_document_sessions(
     State(state): State<AppState>,
+    auth_user: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    // 문서 존재 여부를 먼저 확인합니다
-    // 존재하지 않는 문서의 세션을 조회하면 빈 배열 대신 404를 반환하기 위함
-    let _ = db::get_document(&state.pool, &id)
+    let _ = db::get_document(&state.pool, &id, &auth_user.user_id)
         .await?
         .ok_or(AppError::NotFound)?;
 
@@ -65,19 +65,19 @@ pub async fn list_document_sessions(
 /// `unwrap_or(0)`: Option이 None이면 기본값 0을 사용합니다.
 pub async fn create_writing_session(
     State(state): State<AppState>,
+    auth_user: AuthUser,
     Path(id): Path<String>,
     Json(req): Json<CreateSessionRequest>,
 ) -> Result<Json<WritingSession>, AppError> {
-    // 문서 존재 여부 확인
-    let _ = db::get_document(&state.pool, &id)
+    let _ = db::get_document(&state.pool, &id, &auth_user.user_id)
         .await?
         .ok_or(AppError::NotFound)?;
 
     let session = db::create_session(
         &state.pool,
         &id,
-        req.device_name.as_deref(), // Option<String> → Option<&str> 변환
-        req.word_count_start.unwrap_or(0), // None이면 기본값 0
+        req.device_name.as_deref(),
+        req.word_count_start.unwrap_or(0),
     )
     .await?;
 
@@ -96,11 +96,21 @@ pub async fn create_writing_session(
 /// 이 세션에서 작성한 단어 수를 계산할 수 있습니다.
 pub async fn end_writing_session(
     State(state): State<AppState>,
+    auth_user: AuthUser,
     Path(id): Path<String>,
     Json(req): Json<EndSessionRequest>,
 ) -> Result<Json<WritingSession>, AppError> {
+    // 세션을 먼저 조회하여 해당 문서의 소유자인지 확인
+    let existing = db::get_session(&state.pool, &id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+
+    let _ = db::get_document(&state.pool, &existing.document_id, &auth_user.user_id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+
     let session = db::end_session(&state.pool, &id, req.word_count_end)
         .await?
-        .ok_or(AppError::NotFound)?; // 세션이 없으면 404 반환
+        .ok_or(AppError::NotFound)?;
     Ok(Json(session))
 }

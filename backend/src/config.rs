@@ -39,6 +39,10 @@ pub struct Config {
     /// 서버 포트 번호 (기본값: 3000)
     /// u16: 0~65535 범위의 부호 없는 16비트 정수. 포트 번호에 딱 맞는 타입입니다.
     pub port: u16,
+    /// 문서당 최대 버전 보관 수 (기본값: 50)
+    pub max_document_versions: u32,
+    /// 버전 생성 최소 간격 (분, 기본값: 60)
+    pub version_interval_minutes: u32,
 }
 
 // impl: 구조체에 메서드를 추가하는 블록
@@ -79,6 +83,14 @@ impl Config {
                 .unwrap_or_else(|_| "3000".to_string())
                 .parse()        // "3000" → 3000u16
                 .unwrap_or(3000), // 파싱 실패 시 기본값
+            max_document_versions: env::var("MAX_DOCUMENT_VERSIONS")
+                .unwrap_or_else(|_| "50".to_string())
+                .parse()
+                .unwrap_or(50),
+            version_interval_minutes: env::var("VERSION_INTERVAL_MINUTES")
+                .unwrap_or_else(|_| "60".to_string())
+                .parse()
+                .unwrap_or(60),
         })
     }
 }

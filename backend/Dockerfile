@@ -32,10 +32,17 @@ RUN cargo build --release
 
 # Stage 5: Runtime - Minimal production image
 FROM debian:bookworm-slim AS runtime
-# Install SQLite runtime libraries
-RUN apt-get update && apt-get install -y \
+# Install SQLite, pandoc, XeLaTeX, CJK support, and Korean fonts for PDF export
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-0 \
     ca-certificates \
+    pandoc \
+    texlive-xetex \
+    texlive-latex-recommended \
+    texlive-fonts-recommended \
+    texlive-lang-chinese \
+    lmodern \
+    fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -47,6 +54,9 @@ COPY --from=builder /app/target/release/tecindo /app/tecindo
 
 # Copy frontend build
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
+
+# CJK font for PDF export (override with TECINDO_CJK_FONT env var)
+ENV TECINDO_CJK_FONT="Noto Sans CJK KR"
 
 # Expose port
 EXPOSE 3000

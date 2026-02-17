@@ -12,7 +12,7 @@ interface DocumentStore {
   folders: Folder[];
   currentFolderId: string | null;
 
-  loadDocuments: () => Promise<void>;
+  loadDocuments: (tagId?: string) => Promise<void>;
   loadDocument: (id: string) => Promise<void>;
   createDocument: (data?: { title?: string; folder_id?: string }) => Promise<Document>;
   updateDocument: (id: string, data: { title?: string; folder_id?: string | null; is_pinned?: boolean; is_archived?: boolean }) => Promise<void>;
@@ -37,10 +37,10 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   folders: [],
   currentFolderId: null,
 
-  loadDocuments: async () => {
+  loadDocuments: async (tagId?: string) => {
     try {
       set({ loading: true, error: null });
-      const documents = await api.fetchDocuments();
+      const documents = await api.fetchDocuments(tagId);
       set({ documents, loading: false });
     } catch (error) {
       set({ error: (error as Error).message, loading: false });

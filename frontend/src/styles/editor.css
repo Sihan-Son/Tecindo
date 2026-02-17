@@ -846,6 +846,182 @@ body {
   cursor: not-allowed;
 }
 
+/* Version History Panel */
+.version-history-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 600px;
+  height: 100vh;
+  background: var(--color-bg);
+  border-left: 1px solid var(--color-border);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+}
+
+.version-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.version-history-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.version-close-btn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.version-close-btn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.version-history-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.version-list {
+  width: 180px;
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.version-list-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.version-list-section {
+  padding: 4px 0;
+}
+
+.version-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text);
+  transition: background 0.15s;
+}
+
+.version-item:hover {
+  background: var(--color-hover);
+}
+
+.version-item.active {
+  background: var(--color-hover);
+  border-left: 2px solid var(--color-accent);
+}
+
+.version-number {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.version-date {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.version-chars {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.version-diff {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.version-diff-header {
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.version-diff-content {
+  flex: 1;
+  padding: 12px 16px;
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+}
+
+.version-diff-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.diff-added {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.diff-removed {
+  background: #fee2e2;
+  color: #991b1b;
+  text-decoration: line-through;
+}
+
+.diff-unchanged {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .diff-added {
+  background: #052e16;
+  color: #86efac;
+}
+
+[data-theme="dark"] .diff-removed {
+  background: #450a0a;
+  color: #fca5a5;
+}
+
+.btn-export.active {
+  background: var(--color-hover);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .layout-toolbar {
@@ -888,6 +1064,10 @@ body {
 
   .ProseMirror {
     font-size: 16px;
+  }
+
+  .version-history-panel {
+    width: 100%;
   }
 }
 

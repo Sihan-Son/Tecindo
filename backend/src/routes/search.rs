@@ -17,10 +17,11 @@
 use crate::{
     db,
     error::AppError,
+    middleware::auth::AuthUser,
     routes::documents::AppState,
 };
 use axum::{
-    extract::{Query, State}, // Query: URL 쿼리 파라미터(?key=value)를 추출하는 추출자
+    extract::{Query, State},
     Json,
 };
 use serde::Deserialize;
@@ -52,16 +53,15 @@ pub struct SearchQuery {
 /// - 정상: 관련도순으로 정렬된 문서 목록 반환 (최대 50건)
 pub async fn search(
     State(state): State<AppState>,
+    auth_user: AuthUser,
     Query(query): Query<SearchQuery>,
 ) -> Result<Json<Value>, AppError> {
-    // 빈 검색어 방지: 공백만 있는 경우도 trim()으로 걸러냅니다
     if query.q.trim().is_empty() {
         return Err(AppError::BadRequest(
             "Search query cannot be empty".to_string(),
         ));
     }
 
-    // FTS5 전문검색 실행 — 관련도순으로 정렬된 결과를 반환합니다
-    let documents = db::search_documents(&state.pool, &query.q).await?;
+    let documents = db::search_documents(&state.pool, &query.q, &auth_user.user_id).await?;
     Ok(Json(json!({ "documents": documents })))
 }

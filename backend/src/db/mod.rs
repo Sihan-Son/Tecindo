@@ -15,6 +15,7 @@ pub mod search;
 pub mod sessions;
 pub mod tags;
 pub mod users;
+pub mod versions;
 
 // 하위 모듈의 모든 공개 함수를 재공개(re-export)하여
 // `crate::db::list_documents`처럼 바로 접근할 수 있게 합니다.
@@ -22,3 +23,4 @@ pub use documents::*;
 pub use search::*;
 pub use sessions::*;
 pub use tags::*;
+pub use versions::*;

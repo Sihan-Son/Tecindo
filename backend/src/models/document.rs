@@ -36,7 +36,8 @@ pub struct CreateDocumentRequest {
 #[derive(Debug, Deserialize)]
 pub struct UpdateDocumentRequest {
     pub title: Option<String>,
-    pub folder_id: Option<String>,
+    /// None = 필드 누락 (변경 안 함), Some(None) = null (루트로 이동), Some(Some(id)) = 폴더 지정
+    pub folder_id: Option<Option<String>>,
     pub is_pinned: Option<bool>,
     pub is_archived: Option<bool>,
 }

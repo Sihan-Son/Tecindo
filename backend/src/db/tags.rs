@@ -18,10 +18,11 @@ use sqlx::SqlitePool;
 /// - `<_, Tag>`에서 `_`는 DB 드라이버(SQLite)를 컴파일러가 추론하게 하고,
 ///   `Tag`는 결과를 매핑할 대상 구조체입니다
 /// - `fetch_all`은 모든 행을 Vec으로 반환합니다
-pub async fn list_tags(pool: &SqlitePool) -> Result<Vec<Tag>, AppError> {
+pub async fn list_tags(pool: &SqlitePool, user_id: &str) -> Result<Vec<Tag>, AppError> {
     let tags = sqlx::query_as::<_, Tag>(
-        "SELECT id, name, color FROM tags ORDER BY name",
+        "SELECT id, name, color FROM tags WHERE user_id = ? ORDER BY name",
     )
+    .bind(user_id)
     .fetch_all(pool)
     .await?;
 
@@ -33,11 +34,12 @@ pub async fn list_tags(pool: &SqlitePool) -> Result<Vec<Tag>, AppError> {
 /// `fetch_optional`은 결과가 0행이면 None, 1행이면 Some(Tag)을 반환합니다.
 /// `fetch_one`을 쓰면 0행일 때 에러가 발생하므로, 존재 여부가 불확실한 경우
 /// `fetch_optional`이 더 안전합니다.
-pub async fn get_tag(pool: &SqlitePool, id: &str) -> Result<Option<Tag>, AppError> {
+pub async fn get_tag(pool: &SqlitePool, id: &str, user_id: &str) -> Result<Option<Tag>, AppError> {
     let tag = sqlx::query_as::<_, Tag>(
-        "SELECT id, name, color FROM tags WHERE id = ?",
+        "SELECT id, name, color FROM tags WHERE id = ? AND user_id = ?",
     )
     .bind(id)
+    .bind(user_id)
     .fetch_optional(pool)
     .await?;
 
@@ -53,20 +55,18 @@ pub async fn get_tag(pool: &SqlitePool, id: &str) -> Result<Option<Tag>, AppErro
 ///
 /// `.bind()`는 SQL의 `?` 플레이스홀더에 값을 바인딩합니다.
 /// 직접 문자열을 SQL에 넣지 않고 바인딩을 쓰는 이유: SQL 인젝션 방지
-pub async fn create_tag(pool: &SqlitePool, req: &CreateTagRequest) -> Result<Tag, AppError> {
-    // UUIDv7: 시간 기반 UUID로, 생성 순서대로 정렬됩니다
+pub async fn create_tag(pool: &SqlitePool, req: &CreateTagRequest, user_id: &str) -> Result<Tag, AppError> {
     let id = uuid::Uuid::now_v7().to_string();
 
-    sqlx::query("INSERT INTO tags (id, name, color) VALUES (?, ?, ?)")
+    sqlx::query("INSERT INTO tags (id, name, color, user_id) VALUES (?, ?, ?, ?)")
         .bind(&id)
         .bind(&req.name)
-        .bind(&req.color) // Option<String>도 bind 가능 — None이면 SQL NULL로 처리됨
+        .bind(&req.color)
+        .bind(user_id)
         .execute(pool)
         .await?;
 
-    // 생성 직후 조회하여 완전한 Tag 객체를 반환합니다
-    // ok_or(): Option을 Result로 변환 — None이면 지정한 에러를 반환
-    get_tag(pool, &id)
+    get_tag(pool, &id, user_id)
         .await?
         .ok_or(AppError::Internal("Failed to retrieve created tag".to_string()))
 }
@@ -84,33 +84,32 @@ pub async fn update_tag(
     pool: &SqlitePool,
     id: &str,
     req: &UpdateTagRequest,
+    user_id: &str,
 ) -> Result<Option<Tag>, AppError> {
-    // 먼저 태그 존재 여부를 확인합니다
-    let tag = get_tag(pool, id).await?;
+    let tag = get_tag(pool, id, user_id).await?;
     if tag.is_none() {
-        return Ok(None); // 404 처리를 라우트 핸들러에 위임
+        return Ok(None);
     }
 
-    // if let Some(값) = Option: Option이 Some일 때만 내부 블록을 실행하는 패턴 매칭
-    // 각 필드를 개별 쿼리로 업데이트합니다 (간결함을 위해 동적 쿼리 빌딩 대신 사용)
     if let Some(name) = &req.name {
-        sqlx::query("UPDATE tags SET name = ? WHERE id = ?")
+        sqlx::query("UPDATE tags SET name = ? WHERE id = ? AND user_id = ?")
             .bind(name)
             .bind(id)
+            .bind(user_id)
             .execute(pool)
             .await?;
     }
 
     if let Some(color) = &req.color {
-        sqlx::query("UPDATE tags SET color = ? WHERE id = ?")
+        sqlx::query("UPDATE tags SET color = ? WHERE id = ? AND user_id = ?")
             .bind(color)
             .bind(id)
+            .bind(user_id)
             .execute(pool)
             .await?;
     }
 
-    // 업데이트 후 최신 상태를 조회하여 반환
-    get_tag(pool, id).await
+    get_tag(pool, id, user_id).await
 }
 
 /// ID로 태그를 삭제합니다.
@@ -121,13 +120,13 @@ pub async fn update_tag(
 /// ## 반환값
 /// - `true`: 삭제 성공 (1행 이상 삭제됨)
 /// - `false`: 해당 ID의 태그가 존재하지 않아 삭제된 행이 없음
-pub async fn delete_tag(pool: &SqlitePool, id: &str) -> Result<bool, AppError> {
-    let result = sqlx::query("DELETE FROM tags WHERE id = ?")
+pub async fn delete_tag(pool: &SqlitePool, id: &str, user_id: &str) -> Result<bool, AppError> {
+    let result = sqlx::query("DELETE FROM tags WHERE id = ? AND user_id = ?")
         .bind(id)
+        .bind(user_id)
         .execute(pool)
         .await?;
 
-    // rows_affected(): 이 쿼리로 영향받은 행 수를 반환
     Ok(result.rows_affected() > 0)
 }
 

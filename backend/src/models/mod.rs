@@ -17,6 +17,7 @@ pub mod document;
 pub mod session;
 pub mod tag;
 pub mod user;
+pub mod version;
 
 // pub use: 하위 모듈의 항목을 현재 모듈에서 재공개합니다.
 // `*`(glob)는 모든 공개 항목을 의미합니다.
@@ -25,3 +26,4 @@ pub use document::*;
 pub use session::*;
 pub use tag::*;
 pub use user::*;
+pub use version::*;

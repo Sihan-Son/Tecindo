@@ -19,6 +19,7 @@ pub mod health;
 pub mod search;
 pub mod sessions;
 pub mod tags;
+pub mod versions;
 
 // 각 모듈의 핸들러 함수들을 재공개하여
 // main.rs에서 `routes::list_documents`처럼 바로 접근 가능하게 합니다.
@@ -28,3 +29,4 @@ pub use health::*;
 pub use search::*;
 pub use sessions::*;
 pub use tags::*;
+pub use versions::*;

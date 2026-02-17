@@ -1,4 +1,4 @@
-import type { Document, Folder } from '@/lib/types';
+import type { Document, DocumentVersion, DocumentVersionSummary, Folder } from '@/lib/types';
 
 const API_BASE = '/api/v1';
 
@@ -44,19 +44,20 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
   return response;
 }
 
-export async function fetchDocuments(): Promise<Document[]> {
-  const response = await fetch(`${API_BASE}/documents`);
+export async function fetchDocuments(tagId?: string): Promise<Document[]> {
+  const params = tagId ? `?tag_id=${encodeURIComponent(tagId)}` : '';
+  const response = await authFetch(`${API_BASE}/documents${params}`);
   const data = await handleResponse<{ documents: Document[] }>(response);
   return data.documents;
 }
 
 export async function fetchDocument(id: string): Promise<Document> {
-  const response = await fetch(`${API_BASE}/documents/${id}`);
+  const response = await authFetch(`${API_BASE}/documents/${id}`);
   return handleResponse<Document>(response);
 }
 
 export async function createDocument(data?: { title?: string; folder_id?: string }): Promise<Document> {
-  const response = await fetch(`${API_BASE}/documents`, {
+  const response = await authFetch(`${API_BASE}/documents`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data || {}),
@@ -68,7 +69,7 @@ export async function updateDocument(
   id: string,
   data: { title?: string; folder_id?: string | null; is_pinned?: boolean; is_archived?: boolean }
 ): Promise<Document> {
-  const response = await fetch(`${API_BASE}/documents/${id}`, {
+  const response = await authFetch(`${API_BASE}/documents/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -77,7 +78,7 @@ export async function updateDocument(
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/documents/${id}`, {
+  const response = await authFetch(`${API_BASE}/documents/${id}`, {
     method: 'DELETE',
   });
   if (!response.ok) {
@@ -87,13 +88,13 @@ export async function deleteDocument(id: string): Promise<void> {
 }
 
 export async function fetchDocumentContent(id: string): Promise<string> {
-  const response = await fetch(`${API_BASE}/documents/${id}/content`);
+  const response = await authFetch(`${API_BASE}/documents/${id}/content`);
   const data = await handleResponse<{ content: string }>(response);
   return data.content;
 }
 
 export async function updateDocumentContent(id: string, content: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/documents/${id}/content`, {
+  const response = await authFetch(`${API_BASE}/documents/${id}/content`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
@@ -105,13 +106,13 @@ export async function updateDocumentContent(id: string, content: string): Promis
 }
 
 export async function fetchFolders(): Promise<Folder[]> {
-  const response = await fetch(`${API_BASE}/folders`);
+  const response = await authFetch(`${API_BASE}/folders`);
   const data = await handleResponse<{ folders: Folder[] }>(response);
   return data.folders;
 }
 
 export async function createFolder(data: { name: string; parent_id?: string }): Promise<Folder> {
-  const response = await fetch(`${API_BASE}/folders`, {
+  const response = await authFetch(`${API_BASE}/folders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -123,7 +124,7 @@ export async function updateFolder(
   id: string,
   data: { name?: string; parent_id?: string; sort_order?: number }
 ): Promise<Folder> {
-  const response = await fetch(`${API_BASE}/folders/${id}`, {
+  const response = await authFetch(`${API_BASE}/folders/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -132,11 +133,28 @@ export async function updateFolder(
 }
 
 export async function deleteFolder(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/folders/${id}`, {
+  const response = await authFetch(`${API_BASE}/folders/${id}`, {
     method: 'DELETE',
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
     throw new Error(error.error?.message || `HTTP ${response.status}`);
   }
+}
+
+export async function fetchDocumentVersions(documentId: string): Promise<DocumentVersionSummary[]> {
+  const response = await authFetch(`${API_BASE}/documents/${documentId}/versions`);
+  const data = await handleResponse<{ versions: DocumentVersionSummary[] }>(response);
+  return data.versions;
+}
+
+export async function fetchVersionContent(versionId: string): Promise<DocumentVersion> {
+  const response = await authFetch(`${API_BASE}/versions/${versionId}`);
+  return handleResponse<DocumentVersion>(response);
+}
+
+export async function createVersionSnapshot(documentId: string): Promise<void> {
+  await authFetch(`${API_BASE}/documents/${documentId}/versions`, {
+    method: 'POST',
+  });
 }

@@ -3,8 +3,9 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 import { useDocumentStore } from '@/stores/documentStore';
-import { fetchDocumentContent } from '@/api/client';
+import { fetchDocumentContent, createVersionSnapshot } from '@/api/client';
 import { TagSelector } from '@/components/Tags/TagSelector';
+import { VersionHistory } from '@/components/VersionHistory/VersionHistory';
 
 export default function Editor() {
   const { currentDocument, saveContent, updateDocument } = useDocumentStore();
@@ -12,14 +13,26 @@ export default function Editor() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const saveTimeoutRef = useRef<number | null>(null);
   const savedTimerRef = useRef<number | null>(null);
+  const versionSnapshotRef = useRef<number | null>(null);
   const skipUpdateRef = useRef(false);
   const docIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     docIdRef.current = currentDocument?.id ?? null;
   }, [currentDocument?.id]);
+
+  // 저장 완료 후 5분 비활동 타이머 시작 — 타이머 만료 시 버전 스냅샷 생성
+  const resetVersionSnapshotTimer = () => {
+    if (versionSnapshotRef.current) clearTimeout(versionSnapshotRef.current);
+    const id = docIdRef.current;
+    if (!id) return;
+    versionSnapshotRef.current = window.setTimeout(() => {
+      createVersionSnapshot(id).catch(() => {});
+    }, 5 * 60 * 1000); // 5분
+  };
 
   const editor = useEditor({
     extensions: [
@@ -46,6 +59,7 @@ export default function Editor() {
         setSaveStatus('saving');
         await saveContent(id, markdown);
         setSaveStatus('saved');
+        resetVersionSnapshotTimer();
         if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
         savedTimerRef.current = window.setTimeout(() => setSaveStatus('idle'), 2000);
       }, 1000);
@@ -57,8 +71,13 @@ export default function Editor() {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
+    if (versionSnapshotRef.current) {
+      clearTimeout(versionSnapshotRef.current);
+      versionSnapshotRef.current = null;
+    }
 
     setLoadError(null);
+    setShowVersionHistory(false);
 
     if (!currentDocument) {
       setTitle('');
@@ -106,6 +125,7 @@ export default function Editor() {
     setSaveStatus('saving');
     await saveContent(docIdRef.current, markdown);
     setSaveStatus('saved');
+    resetVersionSnapshotTimer();
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     savedTimerRef.current = window.setTimeout(() => setSaveStatus('idle'), 2000);
   };
@@ -269,6 +289,17 @@ export default function Editor() {
           )}
         </div>
         <div className="export-buttons">
+          <button
+            className={`btn-export${showVersionHistory ? ' active' : ''}`}
+            onClick={() => setShowVersionHistory(!showVersionHistory)}
+            title="버전 기록"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 3.5V8L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+            <span>기록</span>
+          </button>
           <button className="btn-save" onClick={handleSave} title="저장 (Ctrl+S)">저장</button>
           <button className="btn-export" onClick={handleExportMarkdown} title="Export as Markdown">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -286,6 +317,13 @@ export default function Editor() {
           </button>
         </div>
       </div>
+      {showVersionHistory && (
+        <VersionHistory
+          documentId={currentDocument.id}
+          currentContent={editor?.storage.markdown.getMarkdown() || ''}
+          onClose={() => setShowVersionHistory(false)}
+        />
+      )}
     </div>
   );
 }

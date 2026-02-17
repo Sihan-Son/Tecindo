@@ -88,6 +88,7 @@ writing/
 CREATE TABLE folders (
     id TEXT PRIMARY KEY,  -- UUIDv7
     parent_id TEXT REFERENCES folders(id) ON DELETE SET NULL,
+    user_id TEXT REFERENCES users(id),  -- 소유 사용자 (migration 003)
     name TEXT NOT NULL,
     slug TEXT NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
@@ -99,6 +100,7 @@ CREATE TABLE folders (
 CREATE TABLE documents (
     id TEXT PRIMARY KEY,  -- UUIDv7
     folder_id TEXT REFERENCES folders(id) ON DELETE SET NULL,
+    user_id TEXT REFERENCES users(id),  -- 소유 사용자 (migration 003)
     title TEXT NOT NULL DEFAULT 'Untitled',
     slug TEXT NOT NULL,
     file_path TEXT NOT NULL UNIQUE,
@@ -114,6 +116,7 @@ CREATE TABLE documents (
 -- tags
 CREATE TABLE tags (
     id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id),  -- 소유 사용자 (migration 003)
     name TEXT NOT NULL UNIQUE,
     color TEXT
 );
@@ -143,6 +146,19 @@ CREATE TABLE writing_sessions (
     word_count_end INTEGER
 );
 
+-- document_versions (migration 004)
+CREATE TABLE document_versions (
+    id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    version_number INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    word_count INTEGER NOT NULL DEFAULT 0,
+    char_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    UNIQUE(document_id, version_number)
+);
+CREATE INDEX idx_document_versions_doc ON document_versions(document_id, version_number DESC);
+
 -- settings
 CREATE TABLE settings (
     key TEXT PRIMARY KEY,
@@ -160,6 +176,9 @@ CREATE TABLE settings (
 - `DELETE /documents/:id` → `204`
 - `GET /documents/:id/content` → `{ content: string }` (마크다운)
 - `PUT /documents/:id/content` → `{ content: string }` → `204`
+- `GET /documents/:id/versions` → `{ versions: DocumentVersionSummary[] }`
+- `POST /documents/:id/versions` → `201` (비활동 스냅샷 생성)
+- `GET /versions/:id` → `DocumentVersion`
 
 ### Folders
 - `GET /folders` → `{ folders: Folder[] }`
@@ -176,3 +195,8 @@ CREATE TABLE settings (
 - Frontend: functional components only, named exports, absolute imports via `@/`
 - 모든 API 응답은 JSON, snake_case 필드명
 - 에러 응답: `{ error: { code: string, message: string } }`
+
+## specs/ 유지 관리
+
+- `specs/` 디렉토리에 프로젝트 상세 스펙 문서가 있다 (architecture, api, database, frontend, deployment)
+- 새 기능 추가, API 변경, DB 스키마 변경, 컴포넌트 구조 변경 등이 발생하면 해당 specs/ 파일도 함께 업데이트할 것

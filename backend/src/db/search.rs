@@ -41,7 +41,7 @@ use sqlx::SqlitePool;
 /// - `"hello world"` → "hello"와 "world"가 모두 포함된 문서 (AND)
 /// - `hello OR world` → 둘 중 하나라도 포함된 문서
 /// - `hello*` → "hello"로 시작하는 단어가 포함된 문서 (접두사 검색)
-pub async fn search_documents(pool: &SqlitePool, query: &str) -> Result<Vec<Document>, AppError> {
+pub async fn search_documents(pool: &SqlitePool, query: &str, user_id: &str) -> Result<Vec<Document>, AppError> {
     let documents = sqlx::query_as::<_, Document>(
         r#"
         SELECT d.id, d.folder_id, d.title, d.slug, d.file_path,
@@ -49,12 +49,13 @@ pub async fn search_documents(pool: &SqlitePool, query: &str) -> Result<Vec<Docu
                d.is_pinned, d.is_archived, d.created_at, d.updated_at
         FROM documents_fts
         JOIN documents d ON d.rowid = documents_fts.rowid
-        WHERE documents_fts MATCH ?
+        WHERE documents_fts MATCH ? AND d.user_id = ?
         ORDER BY documents_fts.rank
         LIMIT 50
         "#,
     )
     .bind(query)
+    .bind(user_id)
     .fetch_all(pool)
     .await?;
 

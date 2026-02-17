@@ -40,3 +40,16 @@ export interface SearchResult {
   excerpt: string;
   rank: number;
 }
+
+export interface DocumentVersionSummary {
+  id: string;
+  document_id: string;
+  version_number: number;
+  word_count: number;
+  char_count: number;
+  created_at: string;
+}
+
+export interface DocumentVersion extends DocumentVersionSummary {
+  content: string;
+}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocumentStore } from '@/stores/documentStore';
+import { useTagStore } from '@/stores/tagStore';
+import { TagBadge } from '@/components/Tags/TagBadge';
 import type { Document, Folder } from '@/lib/types';
 
 function buildFolderTree(folders: Folder[], parentId: string | null = null): Folder[] {
@@ -25,6 +27,7 @@ export default function Sidebar() {
     deleteFolder,
     setCurrentFolderId,
   } = useDocumentStore();
+  const { tags, documentTags, loadTags, loadDocumentTags } = useTagStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
@@ -32,9 +35,11 @@ export default function Sidebar() {
   const [editingName, setEditingName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [menuDocId, setMenuDocId] = useState<string | null>(null);
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const creatingFolderRef = useRef(false);
   const navigate = useNavigate();
 
   const closeMenu = useCallback(() => setMenuDocId(null), []);
@@ -52,7 +57,16 @@ export default function Sidebar() {
 
   useEffect(() => {
     loadFolders();
+    loadTags();
   }, []);
+
+  useEffect(() => {
+    documents.forEach((doc) => {
+      if (!documentTags[doc.id]) {
+        loadDocumentTags(doc.id);
+      }
+    });
+  }, [documents]);
 
   useEffect(() => {
     if (showNewFolder && newFolderInputRef.current) {
@@ -69,8 +83,13 @@ export default function Sidebar() {
   const filteredDocuments = documents.filter((doc) => {
     const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFolder = currentFolderId === null || doc.folder_id === currentFolderId;
-    return matchesSearch && matchesFolder;
+    const matchesTag = selectedTagId === null || (documentTags[doc.id] || []).some((t) => t.id === selectedTagId);
+    return matchesSearch && matchesFolder && matchesTag;
   });
+
+  const handleTagFilter = (tagId: string) => {
+    setSelectedTagId(selectedTagId === tagId ? null : tagId);
+  };
 
   const handleNewDocument = async () => {
     try {
@@ -121,7 +140,8 @@ export default function Sidebar() {
   };
 
   const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return;
+    if (!newFolderName.trim() || creatingFolderRef.current) return;
+    creatingFolderRef.current = true;
     try {
       await createFolder({
         name: newFolderName.trim(),
@@ -131,6 +151,8 @@ export default function Sidebar() {
       setShowNewFolder(false);
     } catch (error) {
       console.error('Failed to create folder:', error);
+    } finally {
+      creatingFolderRef.current = false;
     }
   };
 
@@ -219,6 +241,7 @@ export default function Sidebar() {
                 onChange={(e) => setEditingName(e.target.value)}
                 onBlur={() => handleRenameFolder(folder.id)}
                 onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing) return;
                   if (e.key === 'Enter') handleRenameFolder(folder.id);
                   if (e.key === 'Escape') setEditingFolderId(null);
                 }}
@@ -328,6 +351,7 @@ export default function Sidebar() {
                 else setShowNewFolder(false);
               }}
               onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) return;
                 if (e.key === 'Enter') handleCreateFolder();
                 if (e.key === 'Escape') setShowNewFolder(false);
               }}
@@ -335,6 +359,20 @@ export default function Sidebar() {
           </div>
         )}
       </div>
+
+      {tags.length > 0 && (
+        <div className="sidebar-tags">
+          {tags.map((tag) => (
+            <button
+              key={tag.id}
+              className={`tag-filter-item ${selectedTagId === tag.id ? 'active' : ''}`}
+              onClick={() => handleTagFilter(tag.id)}
+            >
+              <TagBadge tag={tag} />
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="sidebar-documents">
         {filteredDocuments.length === 0 ? (
@@ -350,6 +388,13 @@ export default function Sidebar() {
               >
                 <div className="document-title">{doc.title || 'Untitled'}</div>
                 {doc.excerpt && <div className="document-excerpt">{doc.excerpt}</div>}
+                {(documentTags[doc.id] || []).length > 0 && (
+                  <div className="document-tags">
+                    {(documentTags[doc.id] || []).map((tag) => (
+                      <TagBadge key={tag.id} tag={tag} />
+                    ))}
+                  </div>
+                )}
                 <div className="document-meta">
                   <span className="document-date">{formatDate(doc.updated_at)}</span>
                   {doc.word_count > 0 && (

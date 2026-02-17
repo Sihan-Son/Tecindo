@@ -124,6 +124,8 @@ async fn main() -> Result<()> {
         pool: pool.clone(),
         documents_path: config.documents_path.clone(),
         jwt_secret: config.jwt_secret.clone(),
+        max_document_versions: config.max_document_versions,
+        version_interval_minutes: config.version_interval_minutes,
     };
 
     // ── 8단계: API 라우터 설정 ──
@@ -149,6 +151,7 @@ async fn main() -> Result<()> {
         // {id}는 URL 경로 파라미터 (Path<String>으로 핸들러에서 추출)
         .route("/documents/{id}", get(get_document).patch(update_document).delete(delete_document))
         .route("/documents/{id}/content", get(get_document_content).put(update_document_content))
+        .route("/documents/{id}/export/pdf", get(export_document_pdf))
         // 폴더(Folder) CRUD API
         .route("/folders", get(list_folders).post(create_folder))
         .route("/folders/{id}", patch(update_folder).delete(delete_folder))
@@ -163,6 +166,9 @@ async fn main() -> Result<()> {
         // 글쓰기 세션 API
         .route("/documents/{id}/sessions", get(list_document_sessions).post(create_writing_session))
         .route("/sessions/{id}", patch(end_writing_session))
+        // 문서 버전 히스토리 API
+        .route("/documents/{id}/versions", get(list_document_versions).post(create_version_snapshot))
+        .route("/versions/{id}", get(get_version_content))
         // 헬스체크 API (서버 상태 확인용)
         .route("/health", get(health_check))
         // .with_state(): 이 라우터의 모든 핸들러에서 AppState를 사용할 수 있게 합니다.

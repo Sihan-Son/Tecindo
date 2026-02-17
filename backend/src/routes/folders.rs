@@ -15,11 +15,12 @@
 use crate::{
     db,
     error::AppError,
+    middleware::auth::AuthUser,
     models::*,
-    routes::documents::AppState, // AppState는 documents 모듈에 정의되어 있습니다.
+    routes::documents::AppState,
 };
 use axum::{
-    extract::{Path, State}, // Path: URL 파라미터 추출, State: 앱 상태 추출
+    extract::{Path, State},
     http::StatusCode,
     Json,
 };
@@ -31,8 +32,9 @@ use serde_json::{json, Value};
 /// 응답: `{ "folders": [...] }`
 pub async fn list_folders(
     State(state): State<AppState>,
+    auth_user: AuthUser,
 ) -> Result<Json<Value>, AppError> {
-    let folders = db::list_folders(&state.pool).await?;
+    let folders = db::list_folders(&state.pool, &auth_user.user_id).await?;
     Ok(Json(json!({ "folders": folders })))
 }
 
@@ -42,14 +44,11 @@ pub async fn list_folders(
 /// 이름으로부터 slug을 자동 생성합니다.
 pub async fn create_folder(
     State(state): State<AppState>,
+    auth_user: AuthUser,
     Json(req): Json<CreateFolderRequest>,
 ) -> Result<Json<Folder>, AppError> {
-    // slug::slugify(): 폴더 이름을 URL 친화적인 형태로 변환
-    // &req.name: 참조로 전달하여 소유권을 유지합니다.
     let slug = slug::slugify(&req.name);
-    // req.name, req.parent_id: 여기서 소유권이 이동(move)됩니다.
-    // 이후 req의 이 필드들은 사용할 수 없습니다.
-    let folder = db::create_folder(&state.pool, req.name, req.parent_id, slug).await?;
+    let folder = db::create_folder(&state.pool, req.name, req.parent_id, slug, &auth_user.user_id).await?;
     Ok(Json(folder))
 }
 
@@ -59,12 +58,13 @@ pub async fn create_folder(
 /// 예: `{ "name": "새 이름" }` → 이름만 변경, 나머지는 그대로
 pub async fn update_folder(
     State(state): State<AppState>,
+    auth_user: AuthUser,
     Path(id): Path<String>,
     Json(req): Json<UpdateFolderRequest>,
 ) -> Result<Json<Folder>, AppError> {
-    let folder = db::update_folder(&state.pool, &id, &req)
+    let folder = db::update_folder(&state.pool, &id, &req, &auth_user.user_id)
         .await?
-        .ok_or(AppError::NotFound)?; // 폴더가 없으면 404 응답
+        .ok_or(AppError::NotFound)?;
     Ok(Json(folder))
 }
 
@@ -75,11 +75,12 @@ pub async fn update_folder(
 /// folder_id가 NULL로 설정됩니다 (루트로 이동).
 pub async fn delete_folder(
     State(state): State<AppState>,
+    auth_user: AuthUser,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    let deleted = db::delete_folder(&state.pool, &id).await?;
+    let deleted = db::delete_folder(&state.pool, &id, &auth_user.user_id).await?;
     if !deleted {
-        return Err(AppError::NotFound); // 삭제할 폴더가 없으면 404
+        return Err(AppError::NotFound);
     }
-    Ok(StatusCode::NO_CONTENT) // 204: 성공했지만 반환할 본문 없음
+    Ok(StatusCode::NO_CONTENT)
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTagStore } from '@/stores/tagStore';
 import { TagBadge } from './TagBadge';
 
@@ -6,71 +6,60 @@ interface TagSelectorProps {
   documentId: string;
 }
 
-const styles = {
-  container: {
-    position: 'relative' as const,
-  },
-  tagList: {
-    display: 'flex',
-    flexWrap: 'wrap' as const,
-    gap: '0.25rem',
-    alignItems: 'center',
-  },
-  addButton: {
-    background: 'none',
-    border: '1px dashed #ccc',
-    borderRadius: '9999px',
-    padding: '0.125rem 0.5rem',
-    fontSize: '0.75rem',
-    color: '#888',
-    cursor: 'pointer',
-  },
-  dropdown: {
-    position: 'absolute' as const,
-    top: '100%',
-    left: 0,
-    marginTop: '0.25rem',
-    backgroundColor: '#fff',
-    border: '1px solid #ddd',
-    borderRadius: '6px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-    zIndex: 50,
-    minWidth: '180px',
-    padding: '0.25rem',
-  },
-  dropdownItem: {
-    display: 'block',
-    width: '100%',
-    padding: '0.375rem 0.5rem',
-    border: 'none',
-    background: 'none',
-    textAlign: 'left' as const,
-    fontSize: '0.8125rem',
-    cursor: 'pointer',
-    borderRadius: '4px',
-  },
-  empty: {
-    padding: '0.5rem',
-    fontSize: '0.8125rem',
-    color: '#999',
-  },
-};
-
 export function TagSelector({ documentId }: TagSelectorProps) {
-  const [open, setOpen] = useState(false);
-  const { tags, documentTags, loadTags, loadDocumentTags, addTagToDocument, removeTagFromDocument } = useTagStore();
+  const [input, setInput] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const addingRef = useRef(false);
+  const { tags, documentTags, loadTags, loadDocumentTags, addTagToDocument, removeTagFromDocument, findOrCreateTag } = useTagStore();
 
   const currentTags = documentTags[documentId] || [];
-  const availableTags = tags.filter((t) => !currentTags.some((ct) => ct.id === t.id));
+  const suggestions = input.trim()
+    ? tags.filter((t) =>
+        t.name.toLowerCase().includes(input.trim().toLowerCase()) &&
+        !currentTags.some((ct) => ct.id === t.id)
+      )
+    : [];
 
   useEffect(() => {
     loadTags();
     loadDocumentTags(documentId);
   }, [documentId, loadTags, loadDocumentTags]);
 
+  const handleAddTag = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || addingRef.current) return;
+    if (currentTags.some((t) => t.name.toLowerCase() === trimmed.toLowerCase())) {
+      setInput('');
+      return;
+    }
+    addingRef.current = true;
+    try {
+      const tag = await findOrCreateTag(trimmed);
+      await addTagToDocument(documentId, tag.id);
+    } finally {
+      addingRef.current = false;
+    }
+    setInput('');
+    setShowSuggestions(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.nativeEvent.isComposing) return;
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      handleAddTag(input);
+    }
+    if (e.key === 'Backspace' && !input && currentTags.length > 0) {
+      const last = currentTags[currentTags.length - 1];
+      removeTagFromDocument(documentId, last.id);
+    }
+  };
+
   return (
-    <div style={styles.container}>
-      <div style={styles.tagList}>
+    <div className="tag-selector">
+      <span className="tag-selector-hash">#</span>
+      <div className="tag-selector-tags">
         {currentTags.map((tag) => (
           <TagBadge
             key={tag.id}
@@ -78,34 +67,35 @@ export function TagSelector({ documentId }: TagSelectorProps) {
             onRemove={() => removeTagFromDocument(documentId, tag.id)}
           />
         ))}
-        <button style={styles.addButton} onClick={() => setOpen(!open)}>
-          + 태그
-        </button>
+        <input
+          ref={inputRef}
+          className="tag-selector-input"
+          type="text"
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setShowSuggestions(true);
+          }}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          placeholder={currentTags.length === 0 ? '태그 입력 후 Enter' : ''}
+        />
       </div>
-      {open && (
-        <div style={styles.dropdown}>
-          {availableTags.length === 0 ? (
-            <div style={styles.empty}>추가할 수 있는 태그가 없습니다</div>
-          ) : (
-            availableTags.map((tag) => (
-              <button
-                key={tag.id}
-                style={styles.dropdownItem}
-                onClick={() => {
-                  addTagToDocument(documentId, tag.id);
-                  setOpen(false);
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <TagBadge tag={tag} />
-              </button>
-            ))
-          )}
+      {showSuggestions && input.trim() && suggestions.length > 0 && (
+        <div className="tag-selector-dropdown">
+          {suggestions.map((tag) => (
+            <button
+              key={tag.id}
+              className="tag-selector-suggestion"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleAddTag(tag.name);
+              }}
+            >
+              <TagBadge tag={tag} />
+            </button>
+          ))}
         </div>
       )}
     </div>
