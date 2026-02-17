@@ -56,7 +56,7 @@ pub async fn create_version_snapshot(
         .ok_or(AppError::NotFound)?;
 
     // 마지막 버전 이후 변경이 없으면 스킵
-    if !db::needs_version_snapshot(&state.pool, &id).await.unwrap_or(false) {
+    if !db::needs_version_snapshot(&state.pool, &id).await? {
         return Ok(StatusCode::NO_CONTENT);
     }
 
@@ -64,8 +64,8 @@ pub async fn create_version_snapshot(
     let word_count = services::count_words(&content) as i64;
     let char_count = services::count_chars(&content) as i64;
 
-    let _ = db::create_version(&state.pool, &id, &content, word_count, char_count).await;
-    let _ = db::prune_versions(&state.pool, &id, state.max_document_versions).await;
+    db::create_version(&state.pool, &id, &content, word_count, char_count).await?;
+    db::prune_versions(&state.pool, &id, state.max_document_versions).await?;
 
     Ok(StatusCode::CREATED)
 }

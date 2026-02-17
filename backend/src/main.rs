@@ -85,6 +85,15 @@ async fn main() -> Result<()> {
     // .await: 비동기 작업이 완료될 때까지 기다립니다. (스레드를 블로킹하지 않음)
     let pool = SqlitePoolOptions::new()
         .max_connections(5) // 최대 5개의 동시 연결을 유지
+        .after_connect(|conn, _meta| {
+            Box::pin(async move {
+                // SQLite 외래키 제약 활성화 (기본 OFF)
+                sqlx::query("PRAGMA foreign_keys = ON")
+                    .execute(&mut *conn)
+                    .await?;
+                Ok(())
+            })
+        })
         .connect(&config.database_url) // 데이터베이스에 연결 (비동기)
         .await?; // 연결 실패 시 에러 전파
 

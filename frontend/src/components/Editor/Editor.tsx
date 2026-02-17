@@ -30,7 +30,9 @@ export default function Editor() {
     const id = docIdRef.current;
     if (!id) return;
     versionSnapshotRef.current = window.setTimeout(() => {
-      createVersionSnapshot(id).catch(() => {});
+      createVersionSnapshot(id).catch((err) => {
+        console.error('Failed to create version snapshot:', err);
+      });
     }, 5 * 60 * 1000); // 5분
   };
 

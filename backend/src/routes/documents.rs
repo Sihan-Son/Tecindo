@@ -181,6 +181,13 @@ pub async fn update_document(
     Path(id): Path<String>,
     Json(req): Json<UpdateDocumentRequest>,
 ) -> Result<Json<Document>, AppError> {
+    // folder_id가 지정된 경우, 해당 폴더가 현재 사용자 소유인지 검증
+    if let Some(Some(folder_id)) = &req.folder_id {
+        db::get_folder(&state.pool, folder_id, &auth_user.user_id)
+            .await?
+            .ok_or(AppError::NotFound)?;
+    }
+
     let document = db::update_document(&state.pool, &id, &req, &auth_user.user_id)
         .await?
         .ok_or(AppError::NotFound)?;

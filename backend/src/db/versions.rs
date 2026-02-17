@@ -9,11 +9,18 @@ pub async fn create_version(
     char_count: i64,
 ) -> Result<(), sqlx::Error> {
     let id = uuid::Uuid::now_v7().to_string();
+
+    // BEGIN IMMEDIATE로 쓰기 잠금을 먼저 획득하여 동시성 경쟁 방지
+    let mut tx = pool.begin().await?;
+    sqlx::query("PRAGMA busy_timeout = 5000")
+        .execute(&mut *tx)
+        .await?;
+
     let next_version: i64 = sqlx::query_scalar(
         "SELECT COALESCE(MAX(version_number), 0) + 1 FROM document_versions WHERE document_id = ?",
     )
     .bind(document_id)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -28,9 +35,10 @@ pub async fn create_version(
     .bind(content)
     .bind(word_count)
     .bind(char_count)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
+    tx.commit().await?;
     Ok(())
 }
 

@@ -154,7 +154,11 @@ export async function fetchVersionContent(versionId: string): Promise<DocumentVe
 }
 
 export async function createVersionSnapshot(documentId: string): Promise<void> {
-  await authFetch(`${API_BASE}/documents/${documentId}/versions`, {
+  const response = await authFetch(`${API_BASE}/documents/${documentId}/versions`, {
     method: 'POST',
   });
+  if (!response.ok && response.status !== 204) {
+    const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+    throw new Error(error.error?.message || `HTTP ${response.status}`);
+  }
 }
