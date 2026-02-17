@@ -146,23 +146,23 @@ async fn main() -> Result<()> {
         // 문서(Document) CRUD API
         // .post()를 .route()에 체이닝하면 같은 경로에 여러 HTTP 메서드를 매핑할 수 있습니다.
         .route("/documents", get(list_documents).post(create_document))
-        // :id는 URL 경로 파라미터 (Path<String>으로 핸들러에서 추출)
-        .route("/documents/:id", get(get_document).patch(update_document).delete(delete_document))
-        .route("/documents/:id/content", get(get_document_content).put(update_document_content))
+        // {id}는 URL 경로 파라미터 (Path<String>으로 핸들러에서 추출)
+        .route("/documents/{id}", get(get_document).patch(update_document).delete(delete_document))
+        .route("/documents/{id}/content", get(get_document_content).put(update_document_content))
         // 폴더(Folder) CRUD API
         .route("/folders", get(list_folders).post(create_folder))
-        .route("/folders/:id", patch(update_folder).delete(delete_folder))
+        .route("/folders/{id}", patch(update_folder).delete(delete_folder))
         // 태그(Tag) CRUD API
         .route("/tags", get(list_tags).post(create_tag))
-        .route("/tags/:id", patch(update_tag).delete(delete_tag))
+        .route("/tags/{id}", patch(update_tag).delete(delete_tag))
         // 문서-태그 관계 API
-        .route("/documents/:id/tags", get(get_document_tags).post(add_tag_to_document))
-        .route("/documents/:id/tags/:tag_id", delete(remove_tag_from_document))
+        .route("/documents/{id}/tags", get(get_document_tags).post(add_tag_to_document))
+        .route("/documents/{id}/tags/{tag_id}", delete(remove_tag_from_document))
         // 전문검색(FTS5) API
         .route("/search", get(search))
         // 글쓰기 세션 API
-        .route("/documents/:id/sessions", get(list_document_sessions).post(create_writing_session))
-        .route("/sessions/:id", patch(end_writing_session))
+        .route("/documents/{id}/sessions", get(list_document_sessions).post(create_writing_session))
+        .route("/sessions/{id}", patch(end_writing_session))
         // 헬스체크 API (서버 상태 확인용)
         .route("/health", get(health_check))
         // .with_state(): 이 라우터의 모든 핸들러에서 AppState를 사용할 수 있게 합니다.
@@ -180,16 +180,17 @@ async fn main() -> Result<()> {
     // ── 10단계: 프론트엔드 정적 파일 서빙 설정 ──
     // 빌드된 프론트엔드 파일이 있으면 같은 서버에서 서빙합니다.
     // SPA(Single Page Application)이므로, 찾을 수 없는 경로는 index.html로 돌려보냅니다.
-    let frontend_dist = Path::new("../frontend/dist");
-    // if-else가 표현식(expression)으로 사용됩니다.
-    // Rust에서는 if-else의 결과를 변수에 바로 대입할 수 있습니다.
-    let app = if frontend_dist.exists() {
-        tracing::info!("Serving frontend static files from ../frontend/dist");
+    // 프론트엔드 빌드 디렉토리: Docker에서는 ./frontend/dist, 로컬 개발에서는 ../frontend/dist
+    let frontend_dist = ["./frontend/dist", "../frontend/dist"]
+        .iter()
+        .map(Path::new)
+        .find(|p| p.exists());
 
-        // ServeDir: 디렉토리의 파일을 HTTP로 서빙하는 서비스
-        // not_found_service: 파일을 찾지 못하면 index.html을 반환 (SPA 라우팅 지원)
-        let serve_dir = ServeDir::new("../frontend/dist")
-            .not_found_service(ServeFile::new("../frontend/dist/index.html"));
+    let app = if let Some(dist_path) = frontend_dist {
+        tracing::info!("Serving frontend static files from {}", dist_path.display());
+
+        let serve_dir = ServeDir::new(dist_path)
+            .not_found_service(ServeFile::new(dist_path.join("index.html")));
 
         Router::new()
             // .nest(): API 라우트를 /api/v1 경로 아래에 중첩시킵니다.

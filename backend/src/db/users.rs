@@ -6,7 +6,7 @@ pub async fn create_user(
     pool: &SqlitePool,
     id: &str,
     username: &str,
-    email: &str,
+    email: Option<&str>,
     password_hash: &str,
 ) -> Result<User, AppError> {
     sqlx::query(

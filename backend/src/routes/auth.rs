@@ -6,9 +6,10 @@ use crate::{
     routes::documents::AppState,
 };
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
+use rand_core::OsRng;
 use axum::{extract::State, Json};
 use chrono::{Duration, Utc};
 use serde_json::{json, Value};
@@ -24,18 +25,18 @@ pub async fn register(
     if req.password.len() < 8 {
         return Err(AppError::BadRequest("Password must be at least 8 characters".to_string()));
     }
-    if !req.email.contains('@') {
-        return Err(AppError::BadRequest("Invalid email address".to_string()));
+    if let Some(email) = &req.email {
+        if !email.contains('@') {
+            return Err(AppError::BadRequest("Invalid email address".to_string()));
+        }
+        if db_users::find_by_email(&state.pool, email).await?.is_some() {
+            return Err(AppError::Conflict("Email already exists".to_string()));
+        }
     }
 
     // Check if username already exists
     if db_users::find_by_username(&state.pool, &req.username).await?.is_some() {
         return Err(AppError::Conflict("Username already exists".to_string()));
-    }
-
-    // Check if email already exists
-    if db_users::find_by_email(&state.pool, &req.email).await?.is_some() {
-        return Err(AppError::Conflict("Email already exists".to_string()));
     }
 
     // Hash password with Argon2id
@@ -48,7 +49,7 @@ pub async fn register(
 
     // Create user
     let user_id = uuid::Uuid::now_v7().to_string();
-    let user = db_users::create_user(&state.pool, &user_id, &req.username, &req.email, &password_hash).await?;
+    let user = db_users::create_user(&state.pool, &user_id, &req.username, req.email.as_deref(), &password_hash).await?;
 
     // Generate tokens
     let access_token = create_access_token(&user.id, &state.jwt_secret)

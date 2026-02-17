@@ -111,6 +111,9 @@ jsonwebtoken = "9"
 # Argon2id는 현재 가장 안전한 비밀번호 해싱 알고리즘으로 권장됩니다.
 argon2 = "0.5"
 
+# rand_core: 암호학적으로 안전한 난수 생성기 (OsRng)
+rand_core = { version = "0.6", features = ["getrandom"] }
+
 # sha2: SHA-2 해시 함수 모음 (SHA-256, SHA-512 등)
 # refresh 토큰 해싱 등에 사용됩니다.
 # (비밀번호 해싱에는 SHA-2가 아닌 argon2를 사용해야 합니다)

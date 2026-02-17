@@ -103,34 +103,57 @@ pub async fn create_document(
     State(state): State<AppState>,
     Json(req): Json<CreateDocumentRequest>,
 ) -> Result<Json<Document>, AppError> {
-    // .as_deref(): Option<String>을 Option<&str>로 변환합니다.
-    //   as_deref()은 String → &str 변환(deref)을 Option 안에서 수행합니다.
-    // .unwrap_or("Untitled"): None이면 기본 제목 사용
-    let title = req.title.as_deref().unwrap_or("Untitled");
+    let id = uuid::Uuid::now_v7().to_string();
 
-    // 폴더에 문서를 넣는 경우, 폴더의 slug를 가져옵니다.
-    // if let Some(folder_id) = &req.folder_id: folder_id가 있는 경우에만 실행
+    // 제목이 없으면 같은 폴더 내 기존 Untitled 문서를 확인하여 고유한 이름 생성
+    let title = if let Some(t) = req.title.as_deref() {
+        t.to_string()
+    } else {
+        let existing = db::list_untitled_titles(
+            &state.pool,
+            req.folder_id.as_deref(),
+        ).await?;
+        generate_untitled_name(&existing)
+    };
+
     let folder_slug = if let Some(folder_id) = &req.folder_id {
         let folder = db::get_folder(&state.pool, folder_id).await?;
-        // .map(|f| f.slug): Option<Folder>의 내부 값을 변환
-        //   Some(folder) → Some(folder.slug), None → None
         folder.map(|f| f.slug)
     } else {
         None
     };
 
-    // 파일 경로 생성: 제목과 폴더로부터 "folder-slug/title-slug.md" 형태를 만듭니다.
-    // .as_deref(): Option<String> → Option<&str> 변환
-    let file_path = services::generate_file_path(title, folder_slug.as_deref());
-    // slug::slugify(): 제목을 URL 친화적인 문자열로 변환
-    let slug = slug::slugify(title);
+    let file_path = services::generate_file_path(&title, folder_slug.as_deref(), &id);
+    let slug = slug::slugify(&title);
 
-    // 빈 마크다운 파일을 디스크에 생성합니다.
     services::write_markdown(&state.documents_path, &file_path, "").await?;
 
-    // DB에 문서 메타데이터를 저장하고, 생성된 문서를 반환합니다.
-    let document = db::create_document(&state.pool, &req, file_path, slug).await?;
+    let req_with_title = CreateDocumentRequest {
+        title: Some(title),
+        folder_id: req.folder_id,
+    };
+    let document = db::create_document(&state.pool, &id, &req_with_title, file_path, slug).await?;
     Ok(Json(document))
+}
+
+/// 같은 폴더 내 기존 Untitled 제목들을 보고 다음 고유 이름을 생성합니다.
+/// 예: [] → "Untitled", ["Untitled"] → "Untitled_2", ["Untitled", "Untitled_2"] → "Untitled_3"
+fn generate_untitled_name(existing: &[String]) -> String {
+    if !existing.iter().any(|t| t == "Untitled") {
+        return "Untitled".to_string();
+    }
+    let mut max_n = 1u32;
+    for title in existing {
+        if let Some(suffix) = title.strip_prefix("Untitled_") {
+            if let Ok(n) = suffix.parse::<u32>() {
+                if n >= max_n {
+                    max_n = n + 1;
+                }
+            }
+        }
+    }
+    if max_n == 1 { max_n = 2; }
+    format!("Untitled_{}", max_n)
 }
 
 /// `PATCH /documents/:id` — 문서 메타데이터를 수정합니다.
@@ -227,11 +250,13 @@ pub async fn update_document_content(
     let char_count = services::count_chars(&req.content) as i64;
 
     // 미리보기(excerpt): 내용의 처음 200자를 추출합니다.
-    // 주의: 바이트 단위([..200])이므로 한글 등 멀티바이트 문자에서 패닉할 수 있습니다.
-    let excerpt = if req.content.len() > 200 {
-        Some(req.content[..200].to_string())
+    // chars().take()를 사용하여 유니코드 문자 단위로 안전하게 자릅니다.
+    let excerpt = if req.content.is_empty() {
+        None
+    } else if req.content.chars().count() > 200 {
+        Some(req.content.chars().take(200).collect::<String>())
     } else {
-        Some(req.content.clone()) // .clone(): 내용 전체를 복제
+        Some(req.content.clone())
     };
 
     // DB의 문서 메타데이터(단어 수, 글자 수, 미리보기, 수정일)를 업데이트합니다.

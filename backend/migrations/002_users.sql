@@ -2,7 +2,7 @@
 CREATE TABLE users (
     id TEXT PRIMARY KEY,  -- UUIDv7
     username TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT UNIQUE,
     password_hash TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))

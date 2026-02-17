@@ -66,7 +66,7 @@ export async function createDocument(data?: { title?: string; folder_id?: string
 
 export async function updateDocument(
   id: string,
-  data: { title?: string; folder_id?: string; is_pinned?: boolean; is_archived?: boolean }
+  data: { title?: string; folder_id?: string | null; is_pinned?: boolean; is_archived?: boolean }
 ): Promise<Document> {
   const response = await fetch(`${API_BASE}/documents/${id}`, {
     method: 'PATCH',

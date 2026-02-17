@@ -10,5 +10,5 @@ export async function searchDocuments(query: string): Promise<SearchResult[]> {
     throw new Error(error.error?.message || `HTTP ${response.status}`);
   }
   const data = await response.json();
-  return data.results;
+  return data.documents;
 }

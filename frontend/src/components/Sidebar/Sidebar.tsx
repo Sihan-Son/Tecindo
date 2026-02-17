@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocumentStore } from '@/stores/documentStore';
 import type { Document, Folder } from '@/lib/types';
@@ -17,6 +17,7 @@ export default function Sidebar() {
     currentFolderId,
     createDocument,
     loadDocument,
+    updateDocument,
     loadFolders,
     createFolder,
     updateFolder,
@@ -29,9 +30,24 @@ export default function Sidebar() {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [menuDocId, setMenuDocId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  const closeMenu = useCallback(() => setMenuDocId(null), []);
+
+  useEffect(() => {
+    if (!menuDocId) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        closeMenu();
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuDocId, closeMenu]);
 
   useEffect(() => {
     loadFolders();
@@ -70,6 +86,31 @@ export default function Sidebar() {
   const handleDocumentClick = async (doc: Document) => {
     navigate(`/doc/${doc.id}`);
     await loadDocument(doc.id);
+  };
+
+  const handleMoveDocument = async (docId: string, folderId: string | null) => {
+    await updateDocument(docId, { folder_id: folderId });
+    closeMenu();
+  };
+
+  const renderMoveTree = (docId: string, parentId: string | null, depth: number): React.ReactNode => {
+    const children = buildFolderTree(folders, parentId);
+    if (children.length === 0) return null;
+    return children.map((folder) => (
+      <div key={folder.id}>
+        <button
+          className="document-dropdown-item"
+          style={{ paddingLeft: `${12 + depth * 16}px` }}
+          onClick={() => handleMoveDocument(docId, folder.id)}
+        >
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M1.5 3C1.5 2.44772 1.94772 2 2.5 2H5.29289C5.4255 2 5.55268 2.05268 5.64645 2.14645L6.85355 3.35355C6.94732 3.44732 7.0745 3.5 7.20711 3.5H11.5C12.0523 3.5 12.5 3.94772 12.5 4.5V11C12.5 11.5523 12.0523 12 11.5 12H2.5C1.94772 12 1.5 11.5523 1.5 11V3Z" stroke="currentColor" strokeWidth="1.2" />
+          </svg>
+          {folder.name}
+        </button>
+        {renderMoveTree(docId, folder.id, depth + 1)}
+      </div>
+    ));
   };
 
   const handleCreateFolder = async () => {
@@ -295,20 +336,51 @@ export default function Sidebar() {
           </div>
         ) : (
           filteredDocuments.map((doc) => (
-            <button
-              key={doc.id}
-              className={`document-item ${currentDocument?.id === doc.id ? 'active' : ''}`}
-              onClick={() => handleDocumentClick(doc)}
-            >
-              <div className="document-title">{doc.title || 'Untitled'}</div>
-              {doc.excerpt && <div className="document-excerpt">{doc.excerpt}</div>}
-              <div className="document-meta">
-                <span className="document-date">{formatDate(doc.updated_at)}</span>
-                {doc.word_count > 0 && (
-                  <span className="document-words">{doc.word_count} words</span>
-                )}
-              </div>
-            </button>
+            <div key={doc.id} className="document-item-wrapper">
+              <button
+                className={`document-item ${currentDocument?.id === doc.id ? 'active' : ''}`}
+                onClick={() => handleDocumentClick(doc)}
+              >
+                <div className="document-title">{doc.title || 'Untitled'}</div>
+                {doc.excerpt && <div className="document-excerpt">{doc.excerpt}</div>}
+                <div className="document-meta">
+                  <span className="document-date">{formatDate(doc.updated_at)}</span>
+                  {doc.word_count > 0 && (
+                    <span className="document-words">{doc.word_count} words</span>
+                  )}
+                </div>
+              </button>
+              {folders.length > 0 && (
+                <div className="document-more-wrapper">
+                  <button
+                    className="document-more-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuDocId(menuDocId === doc.id ? null : doc.id);
+                    }}
+                    title="More actions"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <circle cx="7" cy="3" r="1.2" fill="currentColor" />
+                      <circle cx="7" cy="7" r="1.2" fill="currentColor" />
+                      <circle cx="7" cy="11" r="1.2" fill="currentColor" />
+                    </svg>
+                  </button>
+                  {menuDocId === doc.id && (
+                    <div ref={menuRef} className="document-dropdown">
+                      <div className="document-dropdown-label">Move to</div>
+                      <button
+                        className="document-dropdown-item"
+                        onClick={() => handleMoveDocument(doc.id, null)}
+                      >
+                        Root (No folder)
+                      </button>
+                      {renderMoveTree(doc.id, null, 0)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           ))
         )}
       </div>

@@ -109,15 +109,13 @@ pub fn count_chars(text: &str) -> usize {
 /// generate_file_path("나의 첫 글", Some("일기")) → "일기/나의-첫-글.md"
 /// generate_file_path("나의 첫 글", None) → "나의-첫-글.md"
 /// ```
-pub fn generate_file_path(title: &str, folder_slug: Option<&str>) -> String {
-    // slug::slugify(): 제목을 URL 친화적인 문자열로 변환합니다.
-    // 예: "Hello World!" → "hello-world", "나의 글" → "나의-글"
+pub fn generate_file_path(title: &str, folder_slug: Option<&str>, id: &str) -> String {
     let slug = slug::slugify(title);
-    // if let Some(folder) = ...: Option이 Some이면 값을 추출하여 folder에 대입
+    // UUID 앞 8자를 파일명에 포함시켜 같은 제목의 문서도 고유한 경로를 갖게 합니다.
+    let short_id = &id[..8];
     if let Some(folder) = folder_slug {
-        // format!: 포맷 문자열 매크로. Python의 f-string과 비슷합니다.
-        format!("{}/{}.md", folder, slug)
+        format!("{}/{}-{}.md", folder, slug, short_id)
     } else {
-        format!("{}.md", slug)
+        format!("{}-{}.md", slug, short_id)
     }
 }

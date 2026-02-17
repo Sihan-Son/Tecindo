@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct User {
     pub id: String,
     pub username: String,
-    pub email: String,
+    pub email: Option<String>,
     #[serde(skip_serializing)]
     pub password_hash: String,
     pub created_at: String,
@@ -15,7 +15,7 @@ pub struct User {
 pub struct UserResponse {
     pub id: String,
     pub username: String,
-    pub email: String,
+    pub email: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -35,7 +35,7 @@ impl From<User> for UserResponse {
 #[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
     pub username: String,
-    pub email: String,
+    pub email: Option<String>,
     pub password: String,
 }
 

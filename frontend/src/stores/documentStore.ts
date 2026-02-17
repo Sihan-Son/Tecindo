@@ -15,7 +15,7 @@ interface DocumentStore {
   loadDocuments: () => Promise<void>;
   loadDocument: (id: string) => Promise<void>;
   createDocument: (data?: { title?: string; folder_id?: string }) => Promise<Document>;
-  updateDocument: (id: string, data: { title?: string; folder_id?: string; is_pinned?: boolean; is_archived?: boolean }) => Promise<void>;
+  updateDocument: (id: string, data: { title?: string; folder_id?: string | null; is_pinned?: boolean; is_archived?: boolean }) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   loadContent: (id: string) => Promise<void>;
   saveContent: (id: string, content: string) => Promise<void>;
@@ -64,6 +64,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       set((state) => ({
         documents: [document, ...state.documents],
         currentDocument: document,
+        currentContent: '',
         loading: false,
       }));
       return document;
@@ -101,16 +102,19 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     try {
       set({ loading: true, error: null });
       const content = await api.fetchDocumentContent(id);
-      set({ currentContent: content, loading: false });
+      if (get().currentDocument?.id === id) {
+        set({ currentContent: content, loading: false });
+      }
     } catch (error) {
-      set({ error: (error as Error).message, loading: false });
+      if (get().currentDocument?.id === id) {
+        set({ error: (error as Error).message, loading: false });
+      }
     }
   },
 
   saveContent: async (id: string, content: string) => {
     try {
       await api.updateDocumentContent(id, content);
-      set({ currentContent: content });
     } catch (error) {
       set({ error: (error as Error).message });
     }

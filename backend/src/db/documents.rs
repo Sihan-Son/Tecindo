@@ -84,6 +84,28 @@ pub async fn get_document(pool: &SqlitePool, id: &str) -> Result<Option<Document
     Ok(doc)
 }
 
+/// 같은 폴더에서 "Untitled" 접두사를 가진 문서 제목들을 조회합니다.
+pub async fn list_untitled_titles(
+    pool: &SqlitePool,
+    folder_id: Option<&str>,
+) -> Result<Vec<String>, AppError> {
+    let rows: Vec<(String,)> = if let Some(fid) = folder_id {
+        sqlx::query_as(
+            "SELECT title FROM documents WHERE folder_id = ? AND title LIKE 'Untitled%'",
+        )
+        .bind(fid)
+        .fetch_all(pool)
+        .await?
+    } else {
+        sqlx::query_as(
+            "SELECT title FROM documents WHERE folder_id IS NULL AND title LIKE 'Untitled%'",
+        )
+        .fetch_all(pool)
+        .await?
+    };
+    Ok(rows.into_iter().map(|(t,)| t).collect())
+}
+
 /// 새 문서를 생성합니다.
 ///
 /// 문서 레코드를 DB에 삽입하고, 생성된 문서를 다시 조회하여 반환합니다.
@@ -95,15 +117,11 @@ pub async fn get_document(pool: &SqlitePool, id: &str) -> Result<Option<Document
 /// - `slug`: URL 친화적인 문서 식별자
 pub async fn create_document(
     pool: &SqlitePool,
+    id: &str,
     req: &CreateDocumentRequest,
     file_path: String,
     slug: String,
 ) -> Result<Document, AppError> {
-    // UUIDv7 생성: 시간 기반 UUID로, 생성 시각에 따라 자연스럽게 정렬됩니다.
-    // .to_string(): UUID를 "550e8400-e29b-..." 형태의 문자열로 변환
-    let id = uuid::Uuid::now_v7().to_string();
-    // .clone(): Option<String>을 복제합니다.
-    // .unwrap_or_else(|| ...): None일 때 기본값 "Untitled"을 생성합니다.
     let title = req.title.clone().unwrap_or_else(|| "Untitled".to_string());
 
     // sqlx::query(): 결과를 구조체로 변환하지 않는 단순 실행 쿼리
@@ -117,18 +135,15 @@ pub async fn create_document(
         //   나머지 컬럼(word_count, created_at 등)은 DEFAULT 값이 사용됩니다.
     )
     // 각 ?에 순서대로 값을 바인딩합니다.
-    .bind(&id)
+    .bind(id)
     .bind(&req.folder_id)
     .bind(&title)
     .bind(&slug)
     .bind(&file_path)
-    // .execute(): INSERT/UPDATE/DELETE처럼 결과 행이 없는 쿼리를 실행합니다.
     .execute(pool)
     .await?;
 
-    // 방금 생성한 문서를 다시 조회하여 반환합니다 (created_at 등 자동 생성 값 포함).
-    // .ok_or(): Option을 Result로 변환. None이면 지정한 에러를 반환합니다.
-    get_document(pool, &id)
+    get_document(pool, id)
         .await?
         .ok_or(AppError::Internal("Failed to retrieve created document".to_string()))
 }
@@ -316,40 +331,7 @@ pub async fn update_folder(
         return Ok(None);
     }
 
-    // ── 동적 쿼리 시도 (참고용) ──
-    // 아래 코드는 동적 쿼리를 구성하려 했으나, sqlx에서 동적 타입 바인딩이 까다로워
-    // 실제로는 사용되지 않습니다.
-    // Box<dyn Trait>: 트레이트 객체. 런타임에 다양한 타입을 하나의 타입으로 다룰 수 있게 합니다.
-    //   dyn: dynamic dispatch (동적 디스패치). 런타임에 어떤 구현을 호출할지 결정합니다.
-    //   Send: 이 값을 다른 스레드로 안전하게 보낼 수 있음을 보장하는 트레이트
-    let mut query = String::from("UPDATE folders SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')");
-    let mut bindings: Vec<Box<dyn sqlx::Encode<'_, sqlx::Sqlite> + Send>> = Vec::new();
-
-    if let Some(name) = &req.name {
-        query.push_str(", name = ?");
-        bindings.push(Box::new(name.clone()));
-    }
-
-    if req.parent_id.is_some() {
-        query.push_str(", parent_id = ?");
-        bindings.push(Box::new(req.parent_id.clone()));
-    }
-
-    if let Some(sort_order) = req.sort_order {
-        query.push_str(", sort_order = ?");
-        bindings.push(Box::new(sort_order));
-    }
-
-    query.push_str(" WHERE id = ?");
-
-    // 동적 쿼리 빌더 (현재 미사용)
-    let mut query_builder = sqlx::query(&query);
-    for binding in bindings {
-        // 참고: 이 for 루프는 실제 바인딩을 수행하지 않습니다.
-        // sqlx의 동적 타입 바인딩 제한으로 인해, 아래의 개별 UPDATE 방식을 사용합니다.
-    }
-
-    // ── 실제 업데이트: 각 필드를 개별 쿼리로 처리 ──
+    // ── 각 필드를 개별 쿼리로 업데이트 ──
     // 각 필드마다 별도의 UPDATE 문을 실행합니다.
     // 트랜잭션이 없어 원자성은 보장되지 않지만, 단순하고 안전한 접근입니다.
     if let Some(name) = &req.name {
